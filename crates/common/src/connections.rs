@@ -22,8 +22,23 @@ impl ConnectionType {
     }
 }
 
+pub fn destinations(from: F) -> impl Iterator<Item = (ConnectionType, F)> {
+    let start = CONNECTIONS.partition_point(|(a, _, _)| *a < from);
+
+    CONNECTIONS[start..]
+        .iter()
+        .copied()
+        .take_while(move |(field, _, _)| field == &from)
+        .map(|(_, ct, to)| (ct, to))
+}
+
+#[must_use]
+pub fn is_connection(from: F, with: ConnectionType, to: F) -> bool {
+    CONNECTIONS.binary_search(&(from, with, to)).is_ok()
+}
+
 // https://github.com/AlexElvers/scotland-yard-data/blob/master/connections.txt
-pub static CONNECTIONS: [(F, ConnectionType, F); 439] = [
+pub static CONNECTIONS: [(F, ConnectionType, F); 441] = [
     (F::new(1).unwrap(), Taxi, F::new(8).unwrap()),
     (F::new(1).unwrap(), Taxi, F::new(9).unwrap()),
     (F::new(1).unwrap(), Bus, F::new(46).unwrap()),
@@ -43,11 +58,13 @@ pub static CONNECTIONS: [(F, ConnectionType, F); 439] = [
     (F::new(6).unwrap(), Taxi, F::new(7).unwrap()),
     (F::new(6).unwrap(), Taxi, F::new(29).unwrap()),
     (F::new(7).unwrap(), Taxi, F::new(6).unwrap()),
-    (F::new(7).unwrap(), Taxi, F::new(17).unwrap()), // ---
+    (F::new(7).unwrap(), Taxi, F::new(17).unwrap()),
     (F::new(7).unwrap(), Bus, F::new(42).unwrap()),
+    (F::new(8).unwrap(), Taxi, F::new(1).unwrap()),
     (F::new(8).unwrap(), Taxi, F::new(18).unwrap()),
     (F::new(8).unwrap(), Taxi, F::new(19).unwrap()),
-    (F::new(9).unwrap(), Taxi, F::new(19).unwrap()),
+    (F::new(9).unwrap(), Taxi, F::new(1).unwrap()),
+    (F::new(9).unwrap(), Taxi, F::new(19).unwrap()), // ---
     (F::new(9).unwrap(), Taxi, F::new(20).unwrap()),
     (F::new(10).unwrap(), Taxi, F::new(11).unwrap()),
     (F::new(10).unwrap(), Taxi, F::new(21).unwrap()),
