@@ -1,0 +1,15 @@
+Erstes Byte ist Anzahl Felder
+
+Für jedes Feld (in dieser Reihenfolge):
+
+1 Byte Anzahl Taxiverbindungen (n)
+n Bytes ansteuerbare Felder
+
+1 Byte Anzahl Busverbindungen (n)
+n Bytes ansteuerbare Felder
+
+1 Byte Anzahl UBahnverbindungen (n)
+n Bytes ansteuerbare Felder
+
+1 Byte Anzahl Fährverbindungen (n)
+n Bytes ansteuerbare Felder
