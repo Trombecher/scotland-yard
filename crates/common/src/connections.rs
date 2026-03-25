@@ -38,7 +38,7 @@ pub fn is_connection(from: F, with: ConnectionType, to: F) -> bool {
 }
 
 // https://github.com/AlexElvers/scotland-yard-data/blob/master/connections.txt
-pub static CONNECTIONS: [(F, ConnectionType, F); 441] = [
+pub static CONNECTIONS: [(F, ConnectionType, F); _] = [
     (F::new(1).unwrap(), Taxi, F::new(8).unwrap()),
     (F::new(1).unwrap(), Taxi, F::new(9).unwrap()),
     (F::new(1).unwrap(), Bus, F::new(46).unwrap()),
@@ -64,13 +64,18 @@ pub static CONNECTIONS: [(F, ConnectionType, F); 441] = [
     (F::new(8).unwrap(), Taxi, F::new(18).unwrap()),
     (F::new(8).unwrap(), Taxi, F::new(19).unwrap()),
     (F::new(9).unwrap(), Taxi, F::new(1).unwrap()),
-    (F::new(9).unwrap(), Taxi, F::new(19).unwrap()), // ---
+    (F::new(9).unwrap(), Taxi, F::new(19).unwrap()),
     (F::new(9).unwrap(), Taxi, F::new(20).unwrap()),
+    (F::new(10).unwrap(), Taxi, F::new(2).unwrap()),
     (F::new(10).unwrap(), Taxi, F::new(11).unwrap()),
     (F::new(10).unwrap(), Taxi, F::new(21).unwrap()),
     (F::new(10).unwrap(), Taxi, F::new(34).unwrap()),
+    (F::new(11).unwrap(), Taxi, F::new(3).unwrap()),
+    (F::new(11).unwrap(), Taxi, F::new(10).unwrap()),
     (F::new(11).unwrap(), Taxi, F::new(22).unwrap()),
+    (F::new(12).unwrap(), Taxi, F::new(3).unwrap()),
     (F::new(12).unwrap(), Taxi, F::new(23).unwrap()),
+    (F::new(13).unwrap(), Taxi, F::new(4).unwrap()),
     (F::new(13).unwrap(), Taxi, F::new(24).unwrap()),
     (F::new(13).unwrap(), Bus, F::new(14).unwrap()),
     (F::new(13).unwrap(), Bus, F::new(23).unwrap()),
@@ -78,7 +83,7 @@ pub static CONNECTIONS: [(F, ConnectionType, F); 441] = [
     (F::new(13).unwrap(), Underground, F::new(46).unwrap()),
     (F::new(13).unwrap(), Underground, F::new(67).unwrap()),
     (F::new(13).unwrap(), Underground, F::new(89).unwrap()),
-    (F::new(14).unwrap(), Taxi, F::new(25).unwrap()),
+    (F::new(14).unwrap(), Taxi, F::new(25).unwrap()), // ---
     (F::new(14).unwrap(), Bus, F::new(15).unwrap()),
     (F::new(15).unwrap(), Taxi, F::new(16).unwrap()),
     (F::new(15).unwrap(), Taxi, F::new(26).unwrap()),
