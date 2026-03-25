@@ -1,11 +1,9 @@
-use scotland_yard_common::{Field, destinations};
+use scotland_yard_common::{CONNECTIONS, Field, destinations, is_connection};
 
 mod detectives;
 mod mrx;
 mod state;
 
 fn main() {
-    for x in destinations(Field::new(2).unwrap()) {
-        println!("{x:?}")
-    }
+    println!("{}", CONNECTIONS.is_sorted())
 }
