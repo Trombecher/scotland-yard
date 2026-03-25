@@ -1,6 +1,6 @@
 use std::num::NonZeroU8;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, PartialOrd, Ord)]
 pub struct Field(NonZeroU8);
 
 pub static STARTING_FIELDS: [Field; 16] = [

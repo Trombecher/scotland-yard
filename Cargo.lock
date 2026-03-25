@@ -96,15 +96,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "scotty"
+name = "scotland_yard_common"
 version = "0.1.0"
 dependencies = [
  "rand",
 ]
 
 [[package]]
-name = "server"
+name = "scotland_yard_server"
 version = "0.1.0"
+dependencies = [
+ "scotland_yard_common",
+]
 
 [[package]]
 name = "syn"

@@ -1,6 +1,7 @@
 [package]
-name = "server"
+name = "scotland_yard_server"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+scotland_yard_common = { path = "../common" }

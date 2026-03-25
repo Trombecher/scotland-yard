@@ -2,7 +2,7 @@
 pub enum MrXTicket {
     Taxi,
     Bus,
-    Metro,
+    Underground,
     Black,
 }
 
@@ -10,5 +10,5 @@ pub enum MrXTicket {
 pub enum Ticket {
     Taxi,
     Bus,
-    Metro,
+    Underground,
 }
