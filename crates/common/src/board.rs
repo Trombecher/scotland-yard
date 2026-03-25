@@ -1,56 +1,34 @@
-use std::mem::transmute;
 use std::num::NonZeroU8;
-use crate::connections::{OPTIONS_TABLE, TYPES_TABLE};
-use crate::game::Ticket;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Field(NonZeroU8);
 
-pub static STARTING_FIELDS: [Field; 16] = unsafe {
-    transmute::<[u8; 16], _>([
-        13, 26, 29, 34, 50, 53, 91, 94, 112, 117, 132, 138, 141, 155, 174, 197,
-    ])
-};
+pub static STARTING_FIELDS: [Field; 16] = [
+    Field::new(13).unwrap(),
+    Field::new(26).unwrap(),
+    Field::new(29).unwrap(),
+    Field::new(34).unwrap(),
+    Field::new(50).unwrap(),
+    Field::new(53).unwrap(),
+    Field::new(91).unwrap(),
+    Field::new(94).unwrap(),
+    Field::new(112).unwrap(),
+    Field::new(117).unwrap(),
+    Field::new(132).unwrap(),
+    Field::new(138).unwrap(),
+    Field::new(141).unwrap(),
+    Field::new(155).unwrap(),
+    Field::new(174).unwrap(),
+    Field::new(197).unwrap(),
+];
 
 impl Field {
-    #[inline]
     #[must_use]
-    pub const unsafe fn new_unchecked(field: u8) -> Self {
-        #[cfg(debug_assertions)]
-        if field == 0 || field >= 200 {
-            panic!(":(")
-        }
-        
-        unsafe { Self(NonZeroU8::new_unchecked(field)) }
-    }
-    
-    #[inline]
-    pub fn connections(self) -> &'static [(ConnectionType, Field)] {
-        OPTIONS_TABLE[self.0.get() as usize - 1]
-    }
-    
-    #[inline]
-    pub fn connection_with(self, other: Field) -> Option<ConnectionType> {
-        TYPES_TABLE[self.0.get() as usize - 1][other.0.get() as usize - 1]
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub(crate) enum ConnectionType {
-    Taxi,
-    Bus,
-    Metro,
-    Ship
-}
-
-impl ConnectionType {
-    #[inline]
-    pub fn usable_with_ticket(self, ticket: Ticket) -> bool {
-        match self {
-            Self::Taxi if ticket == Ticket::Taxi => true,
-            Self::Bus if ticket == Ticket::Bus => true,
-            Self::Metro if ticket == Ticket::Metro => true,
-            _ => false,
+    pub const fn new(index: u8) -> Option<Self> {
+        if 0 < index && index < 200 {
+            Some(Self(NonZeroU8::new(index).unwrap()))
+        } else {
+            None
         }
     }
 }

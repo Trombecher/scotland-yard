@@ -1,25 +1,10 @@
-use std::iter::from_fn;
 use crate::board::{ConnectionType, Field, STARTING_FIELDS};
 use crate::controller::{MrXController, SeekerController};
 use crate::pile::Pile;
 use rand::{Rng, rng};
+use std::iter::from_fn;
 
 const MAX_PLAYERS: u8 = 15;
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum MrXTicket {
-    Taxi,
-    Bus,
-    Metro,
-    Black,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum Ticket {
-    Taxi,
-    Bus,
-    Metro,
-}
 
 impl TryFrom<MrXTicket> for Ticket {
     type Error = ();
@@ -248,19 +233,17 @@ pub enum MrXMove {
 impl MrXMove {
     pub fn iter(self) -> impl Iterator<Item = (MrXTicket, Field)> {
         let mut mv = Some(self);
-        
-        from_fn(move || {
-            match mv {
-                Some(Self::Single(a, b)) => {
-                    mv = None;
-                    Some((a, b))
-                }
-                Some(Self::Double(a, b)) => {
-                    mv = Some(Self::Single(b.0, b.1));
-                    Some(a)
-                }
-                None => None,
+
+        from_fn(move || match mv {
+            Some(Self::Single(a, b)) => {
+                mv = None;
+                Some((a, b))
             }
+            Some(Self::Double(a, b)) => {
+                mv = Some(Self::Single(b.0, b.1));
+                Some(a)
+            }
+            None => None,
         })
     }
 }
