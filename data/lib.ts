@@ -1,13 +1,3 @@
-import _connections from "./connections.json" with {type: "json"};
-
-const connections = _connections as readonly Connection[];
-
-type Connection = {
-    readonly from: number;
-    readonly type: "bus" | "underground" | "black" | "taxi";
-    readonly to: number;
-};
-
 /*
 const connectionsFromStations = () => {
     const connections: Connection[] = [];
@@ -45,6 +35,12 @@ const connectionsFromStations = () => {
     return connections;
 };
  */
+
+export type Connection = {
+    readonly from: number;
+    readonly type: "bus" | "underground" | "black" | "taxi";
+    readonly to: number;
+};
 
 const compareConnectionType = (
     a: Connection["type"],
@@ -89,7 +85,7 @@ const isConnectionInArray = (
 /**
  * connections must be sorted
  */
-const areConnectionsUndirected = (connections: readonly Connection[]) =>
+export const areConnectionsUndirected = (connections: readonly Connection[]) =>
     connections.filter(
         connection =>
             !isConnectionInArray(connections, {
@@ -99,6 +95,18 @@ const areConnectionsUndirected = (connections: readonly Connection[]) =>
             }),
     );
 
-console.log(areConnectionsUndirected(connections));
+const formatConnectionTypeForRust = (connectionType: Connection["type"]) => {
+    if (connectionType === "black") return "X";
+    if (connectionType === "bus") return "B";
+    if (connectionType === "taxi") return "T";
 
-// const formatForRust = (connections: Connection[]) => `[${}]`;
+    connectionType satisfies "underground";
+    return "U";
+};
+
+export const formatForRust = (
+    connections: readonly Connection[],
+) => `// rustfmt::skip
+use super::{ConnectionGraph, Connection as C, ConnectionKind::{Taxi as T, Bus as B, Underground as U, Black as X}, Station as S};
+
+pub static CONNECTIONS: ConnectionGraph<${connections.length}> = ConnectionGraph { connections: [${connections.reduce((total, connection) => `${total},\nC {from: S(${connection.from}), kind: ${formatConnectionTypeForRust(connection.type)}, to: S(${connection.to})}`, "").slice(1)}] };`;

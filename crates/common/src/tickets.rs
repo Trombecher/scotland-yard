@@ -1,4 +1,4 @@
-use crate::ConnectionType;
+use crate::ConnectionKind;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum MrXTicket {
@@ -15,7 +15,7 @@ pub enum Ticket {
     Underground,
 }
 
-impl From<Ticket> for ConnectionType {
+impl From<Ticket> for ConnectionKind {
     fn from(value: Ticket) -> Self {
         match value {
             Ticket::Taxi => Self::Taxi,
