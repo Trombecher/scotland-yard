@@ -1,8 +1,8 @@
-use scotland_yard_common::connections::{CONNECTIONS, Station};
+#![forbid(unsafe_code)]
+#![warn(clippy::pedantic)]
 
-fn main() {
-    println!(
-        "{:#?}",
-        CONNECTIONS.destinations(Station(67)).collect::<Vec<_>>()
-    )
-}
+mod detectives;
+mod mrx;
+mod state;
+
+fn main() {}

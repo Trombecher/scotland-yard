@@ -107,9 +107,10 @@ const formatConnectionTypeForRust = (connectionType: Connection["type"]) => {
 export const formatForRust = (
     connections: readonly Connection[],
 ) => `// rustfmt::skip
-use super::{ConnectionGraph, Connection as C, ConnectionKind::{Taxi as T, Bus as B, Underground as U, Black as X}, Station as S};
+use super::{ConnectionGraph, Connection as C, ConnectionKind::{Taxi as T, Bus as B, Underground as U, Black as X}};
+use crate::Station as S;
 
-pub static CONNECTIONS: ConnectionGraph<${connections.length}> = ConnectionGraph { connections: [${connections.reduce((total, connection) => `${total},\nC {from: S(${connection.from}), kind: ${formatConnectionTypeForRust(connection.type)}, to: S(${connection.to})}`, "").slice(1)}] };`;
+pub static CONNECTIONS: ConnectionGraph<${connections.length}> = ConnectionGraph { connections: [${connections.reduce((total, connection) => `${total},\nC {from: S::new(${connection.from}).unwrap(), kind: ${formatConnectionTypeForRust(connection.type)}, to: S::new(${connection.to}).unwrap()}`, "").slice(1)}] };`;
 
 const parseAlexElversConnectionType = (
     connectionType: string,

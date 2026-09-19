@@ -1,40 +1,67 @@
-use scotland_yard_common::{Field, Ticket, is_connection};
+use scotland_yard_common::{
+    MrXTicket, Station, Ticket,
+    connections::{CONNECTIONS, Connection},
+    content,
+};
 
+#[derive(Debug, thiserror::Error)]
+pub enum DetectiveMoveError {
+    #[error("cannot move detective with {ticket} to {to}", ticket = .0.ticket, to = .0.destination)]
+    CannotMove(DetectiveMove),
+}
+
+/// This move is not guaranteed to be valid.
 #[derive(Debug, PartialEq, Copy, Clone, Eq)]
 pub struct DetectiveMove {
-    ticket: Ticket,
-    destination: Field,
+    pub ticket: Ticket,
+    pub destination: Station,
 }
 
 impl DetectiveMove {
     #[must_use]
-    pub fn new(from: Field, with: Ticket, to: Field) -> Option<Self> {
-        is_connection(from, with.into(), to).then_some(Self {
-            ticket: with,
-            destination: to,
-        })
+    pub fn connection_from_station(self, from: Station) -> Connection {
+        Connection {
+            from,
+            kind: MrXTicket::from(self.ticket).into(),
+            to: self.destination,
+        }
     }
 }
 
-pub struct Detective {
-    start: Field,
-    remaining_taxi_tickets: u8,
-    remaining_bus_tickets: u8,
-    remaining_underground_tickets: u8,
-    moves: Vec<DetectiveMove>,
+pub struct DetectiveState {
+    pub start: Station,
+    pub remaining_taxi_tickets: u8,
+    pub remaining_bus_tickets: u8,
+    pub remaining_underground_tickets: u8,
+    pub moves: Vec<DetectiveMove>,
 }
 
-impl Detective {
+impl DetectiveState {
+    pub const fn new(start: Station) -> Self {
+        Self {
+            start,
+            remaining_taxi_tickets: content::DETECTIVE_INITIAL_TAXI_TICKET_COUNT,
+            remaining_bus_tickets: content::DETECTIVE_INITIAL_BUS_TICKET_COUNT,
+            remaining_underground_tickets: content::DETECTIVE_INITIAL_UNDERGROUND_TICKET_COUNT,
+            moves: Vec::new(),
+        }
+    }
+
     #[must_use]
-    pub fn current_field(&self) -> Field {
+    pub fn current_station(&self) -> Station {
         self.moves.last().map_or(self.start, |m| m.destination)
     }
 
-    pub fn try_use_ticket_to(&mut self, with: Ticket, to: Field) -> bool {
-        let mov = DetectiveMove::new(self.current_field(), with, to);
-        mov.inspect(|mov| {
-            self.moves.push(*mov);
-        });
-        mov.is_some()
+    /// Tries to apply the given move.
+    pub fn move_to(&mut self, detective_move: DetectiveMove) -> Result<(), DetectiveMoveError> {
+        let current_station = self.current_station();
+
+        if !CONNECTIONS.has(detective_move.connection_from_station(current_station)) {
+            self.moves.push(detective_move);
+
+            return Err(DetectiveMoveError::CannotMove(detective_move));
+        }
+
+        Ok(())
     }
 }

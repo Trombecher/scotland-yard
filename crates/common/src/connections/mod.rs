@@ -4,12 +4,9 @@ mod tests;
 
 use std::{iter::Copied, slice};
 
-use crate::Ticket;
+use crate::{Station, Ticket};
 
 pub use data::CONNECTIONS;
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Station(pub u8);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Connection {
@@ -40,6 +37,7 @@ pub enum ConnectionKind {
 
 impl ConnectionKind {
     #[inline]
+    #[must_use]
     pub fn is_usable_with_ticket(self, ticket: Ticket) -> bool {
         match self {
             Self::Taxi if ticket == Ticket::Taxi => true,
@@ -55,6 +53,7 @@ pub struct ConnectionGraph<const N: usize> {
 }
 
 impl<const N: usize> ConnectionGraph<N> {
+    #[must_use]
     pub fn has(&self, connection: Connection) -> bool {
         self.connections.binary_search(&connection).is_ok()
     }
@@ -77,5 +76,15 @@ impl<const N: usize> ConnectionGraph<N> {
             .copied()
             .take_while(move |Connection { from: station, .. }| *station == from)
             .map(|Connection { kind, to, .. }| (kind, to))
+    }
+}
+
+impl<'a, const N: usize> IntoIterator for &'a ConnectionGraph<N> {
+    type Item = Connection;
+
+    type IntoIter = Copied<slice::Iter<'a, Connection>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
