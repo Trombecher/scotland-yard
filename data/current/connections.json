@@ -1221,6 +1221,11 @@
     },
     {
         "from": 58,
+        "type": "taxi",
+        "to": 75
+    },
+    {
+        "from": 58,
         "type": "bus",
         "to": 1
     },
@@ -1658,6 +1663,11 @@
         "from": 74,
         "type": "underground",
         "to": 46
+    },
+    {
+        "from": 75,
+        "type": "taxi",
+        "to": 58
     },
     {
         "from": 75,

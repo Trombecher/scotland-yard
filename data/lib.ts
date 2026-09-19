@@ -57,10 +57,10 @@ const compareConnectionType = (
     return 1;
 };
 
-const compareConnections = (a: Connection, b: Connection) =>
+export const compareConnections = (a: Connection, b: Connection) =>
     a.from - b.from || compareConnectionType(a.type, b.type) || a.to - b.to;
 
-const isConnectionInArray = (
+export const isConnectionInArray = (
     arr: readonly Connection[],
     target: Connection,
 ): boolean => {
@@ -110,3 +110,62 @@ export const formatForRust = (
 use super::{ConnectionGraph, Connection as C, ConnectionKind::{Taxi as T, Bus as B, Underground as U, Black as X}, Station as S};
 
 pub static CONNECTIONS: ConnectionGraph<${connections.length}> = ConnectionGraph { connections: [${connections.reduce((total, connection) => `${total},\nC {from: S(${connection.from}), kind: ${formatConnectionTypeForRust(connection.type)}, to: S(${connection.to})}`, "").slice(1)}] };`;
+
+const parseAlexElversConnectionType = (
+    connectionType: string,
+): Connection["type"] => {
+    if (connectionType === "water") return "black";
+    if (connectionType === "underground") return "underground";
+    if (connectionType === "bus") return "bus";
+    if (connectionType === "taxi") return "taxi";
+
+    throw new Error("invalid connection type");
+};
+
+export const parseConnectionsFromAlexElvers = (connections: string) =>
+    connections
+        .trim()
+        .split(/\r?\n/)
+        .map(connection => {
+            const [from, to, kind] = connection.split(" ");
+
+            return {
+                from: Number(from),
+                type: parseAlexElversConnectionType(kind ?? ""),
+                to: Number(to),
+            } satisfies Connection;
+        });
+
+const reverseConnection = (connection: Connection): Connection => ({
+    from: connection.to,
+    type: connection.type,
+    to: connection.from,
+});
+
+/**
+ * returns a sorted and de-duplicated array of connections
+ * containing every connection from the input array plus
+ * the reverses of each. the input array must be sorted and
+ * deduplicated.
+ */
+export const addReversedConnections = (
+    sortedConnections: readonly Connection[],
+) => {
+    const allConnections: Connection[] = [
+        ...sortedConnections,
+        // Add all connections whose reverse is not yet added.
+        ...sortedConnections
+            .filter(
+                connection =>
+                    !isConnectionInArray(
+                        sortedConnections,
+                        reverseConnection(connection),
+                    ),
+            )
+            .map(reverseConnection),
+    ];
+
+    allConnections.sort(compareConnections);
+
+    return allConnections;
+};

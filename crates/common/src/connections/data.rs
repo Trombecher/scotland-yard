@@ -1,7 +1,7 @@
 // rustfmt::skip
 use super::{ConnectionGraph, Connection as C, ConnectionKind::{Taxi as T, Bus as B, Underground as U, Black as X}, Station as S};
 
-pub static CONNECTIONS: ConnectionGraph<932> = ConnectionGraph { connections: [
+pub static CONNECTIONS: ConnectionGraph<934> = ConnectionGraph { connections: [
 C {from: S(1), kind: T, to: S(8)},
 C {from: S(1), kind: T, to: S(9)},
 C {from: S(1), kind: B, to: S(46)},
@@ -246,6 +246,7 @@ C {from: S(58), kind: T, to: S(45)},
 C {from: S(58), kind: T, to: S(57)},
 C {from: S(58), kind: T, to: S(59)},
 C {from: S(58), kind: T, to: S(74)},
+C {from: S(58), kind: T, to: S(75)},
 C {from: S(58), kind: B, to: S(1)},
 C {from: S(58), kind: B, to: S(46)},
 C {from: S(58), kind: B, to: S(74)},
@@ -334,6 +335,7 @@ C {from: S(74), kind: T, to: S(92)},
 C {from: S(74), kind: B, to: S(58)},
 C {from: S(74), kind: B, to: S(94)},
 C {from: S(74), kind: U, to: S(46)},
+C {from: S(75), kind: T, to: S(58)},
 C {from: S(75), kind: T, to: S(59)},
 C {from: S(75), kind: T, to: S(74)},
 C {from: S(75), kind: T, to: S(94)},

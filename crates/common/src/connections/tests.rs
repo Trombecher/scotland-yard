@@ -1,4 +1,9 @@
-use crate::CONNECTIONS;
+use super::*;
+
+#[test]
+fn connections_are_sorted() {
+    assert!(CONNECTIONS.connections.is_sorted());
+}
 
 #[test]
 fn no_directed_edges() {
