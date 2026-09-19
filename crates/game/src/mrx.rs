@@ -25,8 +25,8 @@ pub enum MrXMoveError {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct SingleMrXMove {
-    ticket: MrXTicket,
-    destination: Station,
+    pub ticket: MrXTicket,
+    pub destination: Station,
 }
 
 impl Display for SingleMrXMove {
@@ -36,6 +36,7 @@ impl Display for SingleMrXMove {
 }
 
 impl SingleMrXMove {
+    #[must_use]
     pub fn connection_from_station(self, from: Station) -> Connection {
         Connection {
             from,
@@ -47,8 +48,8 @@ impl SingleMrXMove {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct MrXMove {
-    first: SingleMrXMove,
-    second: Option<SingleMrXMove>,
+    pub first: SingleMrXMove,
+    pub second: Option<SingleMrXMove>,
 }
 
 impl MrXMove {
@@ -120,6 +121,11 @@ impl MrXState {
         Ok(())
     }
 
+    /// Tries to move Mr. X.
+    ///
+    /// # Errors
+    ///
+    /// If invariants are dissatisfied.
     pub fn move_by(
         &mut self,
         mov: MrXMove,

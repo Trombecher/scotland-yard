@@ -1,14 +1,23 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::pedantic)]
 
-use scotland_yard_common::STARTING_FIELDS;
+use std::error::Error;
 
-use crate::state::GameState;
+use scotland_yard_common::{MrXTicket, STARTING_FIELDS, Station};
+use scotland_yard_game::{Game, MrXMove, SingleMrXMove};
 
-mod detectives;
-mod mrx;
-mod state;
+fn main() -> Result<(), Box<dyn Error>> {
+    let mut game = Game::new(STARTING_FIELDS[0], &[STARTING_FIELDS[1]])?;
 
-fn main() {
-    let state = GameState::new(STARTING_FIELDS[0], &[STARTING_FIELDS[1]]).unwrap();
+    game.move_mr_x(MrXMove {
+        first: SingleMrXMove {
+            destination: Station::new(4).unwrap(),
+            ticket: MrXTicket::Taxi,
+        },
+        second: None,
+    })?;
+
+    dbg!(game.state());
+
+    Ok(())
 }

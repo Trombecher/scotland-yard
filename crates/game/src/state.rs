@@ -1,5 +1,3 @@
-use std::range::Range;
-
 use scotland_yard_common::{
     Station,
     content::{MAX_DETECTIVES, MIN_DETECTIVES, ROUNDS},
@@ -10,23 +8,37 @@ use crate::{
     mrx::{MrXMove, MrXMoveError, MrXState},
 };
 
-#[derive(Clone, Debug)]
-pub enum GameStatus {
+#[derive(Copy, Clone, Debug)]
+pub enum GameState {
     MrXHasWon,
     DetectivesHaveWon {
         detective_index_which_captured_mr_x: u8,
     },
-    PendingTurn(Turn),
+    PendingTurn {
+        turn: Turn,
+        round: u8,
+    },
 }
 
-impl GameStatus {
+impl GameState {
+    #[must_use]
     pub fn is_it_the_turn_of_mr_x(self) -> bool {
-        matches!(self, Self::PendingTurn(Turn::MrX))
+        matches!(
+            self,
+            Self::PendingTurn {
+                turn: Turn::MrX,
+                ..
+            }
+        )
     }
 
+    #[must_use]
     pub fn is_it_the_turn_of_detective(self, detective_index: u8) -> bool {
         match self {
-            Self::PendingTurn(Turn::Detective(d)) => detective_index == d,
+            Self::PendingTurn {
+                turn: Turn::Detective(d),
+                ..
+            } => detective_index == d,
             _ => false,
         }
     }
@@ -83,101 +95,151 @@ impl TryFrom<u8> for DetectiveCount {
     }
 }
 
-pub struct GameState {
-    next_turn: Turn,
-    /// Rounds 0 to 21 (inclusive)
-    round: u8,
+#[derive(Debug, thiserror::Error)]
+pub enum GameStateCreationError {
+    #[error("{0} is too few detectives")]
+    TooFewDetectives(u8),
+
+    #[error("{0} is too many detectives")]
+    TooManyDetectives(usize),
+}
+
+pub struct Game {
+    state: GameState,
     mr_x_state: MrXState,
     detective_states: Vec<DetectiveState>,
 }
 
-impl GameState {
+impl Game {
+    /// # Errors
+    ///
+    /// TODO
+    #[allow(clippy::missing_panics_doc)]
     pub fn new(
         mr_x_starting_station: Station,
         detective_starting_stations: &[Station],
-    ) -> Option<Self> {
-        if !(Range {
-            start: MIN_DETECTIVES as usize,
-            end: MAX_DETECTIVES as usize + 1,
-        })
-        .contains(&detective_starting_stations.len())
-        {
-            // Too many or too few detectives
-            return None;
+    ) -> Result<Self, GameStateCreationError> {
+        if detective_starting_stations.len() < MIN_DETECTIVES as usize {
+            // This cast does not truncate.
+            #[allow(clippy::cast_possible_truncation)]
+            return Err(GameStateCreationError::TooFewDetectives(
+                detective_starting_stations.len() as u8,
+            ));
         }
 
-        Some(GameState {
-            next_turn: Turn::MrX,
+        if detective_starting_stations.len() > MAX_DETECTIVES as usize {
+            return Err(GameStateCreationError::TooManyDetectives(
+                detective_starting_stations.len(),
+            ));
+        }
+
+        Ok(Game {
+            state: GameState::PendingTurn {
+                turn: Turn::MrX,
+                round: 0,
+            },
+
             detective_states: detective_starting_stations
                 .iter()
                 .copied()
                 .map(DetectiveState::new)
                 .collect(),
+
             #[allow(clippy::cast_possible_truncation)]
             mr_x_state: MrXState::new(
                 mr_x_starting_station,
                 detective_starting_stations.len() as u8,
             )
             .unwrap(),
-            round: 0,
         })
     }
 
+    #[must_use]
     pub fn mr_x(&self) -> &MrXState {
         &self.mr_x_state
     }
 
+    #[must_use]
     pub fn detectives(&self) -> &[DetectiveState] {
         &self.detective_states
     }
 
-    pub fn round(&self) -> u8 {
-        self.round
-    }
-
-    /// Advances the turn.
+    /// Transitions the game into a new state.
     ///
     /// * If it was Mr. X's turn, then it is now detective 0's term;
     /// * if it was the last detective's turn then it is Mr. X's turn now;
     /// * otherwise, it is now the next detective's turn.
-    fn advance_turn(&mut self) {
-        match self.next_turn {
-            Turn::MrX => {
-                self.next_turn = Turn::Detective(0);
+    fn transition_game_state(&mut self) {
+        let (turn, round) = match self.state {
+            GameState::MrXHasWon => {
+                unreachable!("advanced turn but Mr. X has already won")
             }
-            Turn::Detective(detective_index) => {
-                if detective_index as usize + 1 < self.detective_states.len() {
-                    self.next_turn = Turn::Detective(detective_index + 1);
+            GameState::DetectivesHaveWon {
+                detective_index_which_captured_mr_x,
+            } => {
+                unreachable!(
+                    "advanced turn but detective {detective_index_which_captured_mr_x} have already won"
+                )
+            }
+            GameState::PendingTurn { turn, round } => (turn, round),
+        };
+
+        let mr_x_station = self.mr_x_state.current_station();
+        let detective_at_mr_x_station = self.detectives_at(mr_x_station).next();
+
+        if let Some(detective) = detective_at_mr_x_station {
+            self.state = GameState::DetectivesHaveWon {
+                detective_index_which_captured_mr_x: detective,
+            };
+
+            return;
+        }
+
+        self.state = match turn {
+            Turn::MrX => GameState::PendingTurn {
+                turn: Turn::Detective(0),
+                round,
+            },
+            Turn::Detective(detective_index)
+                if self.detective_states.len() == detective_index as usize + 1 =>
+            {
+                // It was last detective's turn and they have not won.
+
+                if round == ROUNDS - 1 {
+                    // It is last round.
+
+                    GameState::MrXHasWon
                 } else {
-                    self.next_turn = Turn::MrX;
+                    // Not last round.
+
+                    GameState::PendingTurn {
+                        turn: Turn::MrX,
+                        round: round + 1,
+                    }
                 }
             }
-        }
+            Turn::Detective(detective_index) => GameState::PendingTurn {
+                turn: Turn::Detective(detective_index + 1),
+                round,
+            },
+        };
     }
 
-    pub fn status(&self) -> GameStatus {
-        if self.round >= ROUNDS {
-            GameStatus::MrXHasWon
-        } else {
-            let mr_x_station = self.mr_x_state.current_station();
-
-            if let Some(detective) = self.detectives_at(mr_x_station).next() {
-                GameStatus::DetectivesHaveWon {
-                    detective_index_which_captured_mr_x: detective,
-                }
-            } else {
-                todo!()
-            }
-        }
+    #[must_use]
+    pub fn state(&self) -> GameState {
+        self.state
     }
 
+    /// # Errors
+    ///
+    /// TODO
     pub fn move_mr_x(&mut self, mov: MrXMove) -> Result<(), GameStateTransitionError> {
-        if !self.status().is_it_the_turn_of_mr_x() {
+        if !self.state().is_it_the_turn_of_mr_x() {
             return Err(GameStateTransitionError::ItIsNotTheTurnOfMrX);
         }
 
         self.mr_x_state.move_by(mov, &self.detective_states)?;
-        self.advance_turn();
+        self.transition_game_state();
 
         Ok(())
     }
@@ -193,6 +255,10 @@ impl GameState {
         Ok(())
     }
 
+    /// # Errors
+    ///
+    /// If the detective with the given index does not exist.
+    #[allow(clippy::missing_panics_doc)]
     pub fn detective(
         &self,
         detective_index: u8,
@@ -224,15 +290,21 @@ impl GameState {
             .filter_map(move |(index, detective)| {
                 (detective.current_station() == station).then_some(index)
             })
-            .map(|detective_index| detective_index as u8)
+            .map(|detective_index| {
+                #[allow(clippy::cast_possible_truncation)]
+                return detective_index as u8;
+            })
     }
 
+    /// # Errors
+    ///
+    /// TODO
     pub fn move_detective(
         &mut self,
         detective_index: u8,
         detective_move: DetectiveMove,
     ) -> Result<(), GameStateTransitionError> {
-        if !self.status().is_it_the_turn_of_detective(detective_index) {
+        if !self.state().is_it_the_turn_of_detective(detective_index) {
             return Err(GameStateTransitionError::IsIsNotTheTurnOfDetective(
                 detective_index,
             ));
@@ -260,7 +332,7 @@ impl GameState {
                 detective_move,
             })?;
 
-        self.advance_turn();
+        self.transition_game_state();
 
         Ok(())
     }

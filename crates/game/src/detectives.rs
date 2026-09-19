@@ -49,6 +49,7 @@ pub struct DetectiveState {
 }
 
 impl DetectiveState {
+    #[must_use]
     pub const fn new(start: Station) -> Self {
         Self {
             start,
@@ -65,6 +66,10 @@ impl DetectiveState {
     }
 
     /// Tries to apply the given move.
+    ///
+    /// # Errors
+    ///
+    /// If invariants are dissatisfied.
     pub fn move_to(&mut self, detective_move: DetectiveMove) -> Result<(), DetectiveMoveError> {
         let current_station = self.current_station();
 

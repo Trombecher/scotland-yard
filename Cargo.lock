@@ -103,11 +103,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "scotland_yard_server"
+name = "scotland_yard_game"
 version = "0.1.0"
 dependencies = [
  "scotland_yard_common",
  "thiserror",
+]
+
+[[package]]
+name = "scotland_yard_server"
+version = "0.1.0"
+dependencies = [
+ "scotland_yard_common",
+ "scotland_yard_game",
 ]
 
 [[package]]
