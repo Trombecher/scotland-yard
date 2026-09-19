@@ -1,15 +1,5 @@
 [
     {
-        "from": 24,
-        "type": "taxi",
-        "to": 37
-    },
-    {
-        "from": 24,
-        "type": "taxi",
-        "to": 38
-    },
-    {
         "from": 25,
         "type": "taxi",
         "to": 14

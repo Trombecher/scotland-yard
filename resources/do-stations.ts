@@ -1,5 +1,6 @@
-import {writeFile} from "node:fs/promises";
-import connections from "./connections.json" with {type: "json"};
+import _connections from "./connections.json" with {type: "json"};
+
+const connections = _connections as readonly Connection[];
 
 type Connection = {
     readonly from: number;
@@ -7,6 +8,7 @@ type Connection = {
     readonly to: number;
 };
 
+/*
 const connectionsFromStations = () => {
     const connections: Connection[] = [];
 
@@ -42,6 +44,7 @@ const connectionsFromStations = () => {
 
     return connections;
 };
+ */
 
 const compareConnectionType = (
     a: Connection["type"],
@@ -95,5 +98,7 @@ const areConnectionsUndirected = (connections: readonly Connection[]) =>
                 to: connection.from,
             }),
     );
+
+console.log(areConnectionsUndirected(connections));
 
 // const formatForRust = (connections: Connection[]) => `[${}]`;
