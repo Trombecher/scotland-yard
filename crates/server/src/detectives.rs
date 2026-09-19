@@ -1,20 +1,32 @@
+use std::fmt::Display;
+
 use scotland_yard_common::{
-    MrXTicket, Station, Ticket,
+    DetectiveTicket, MrXTicket, Station,
     connections::{CONNECTIONS, Connection},
     content,
 };
 
 #[derive(Debug, thiserror::Error)]
 pub enum DetectiveMoveError {
-    #[error("cannot move detective with {ticket} to {to}", ticket = .0.ticket, to = .0.destination)]
-    CannotMove(DetectiveMove),
+    #[error("connection does not exist")]
+    ConnectionDoesNotExist,
+    #[error("no {0} tickets left")]
+    NoTicketsLeftOf(DetectiveTicket),
+    #[error("detective {detective_at_destination} is already at the destination")]
+    ThereIsAlreadyADetectiveAtTheDestination { detective_at_destination: u8 },
 }
 
 /// This move is not guaranteed to be valid.
 #[derive(Debug, PartialEq, Copy, Clone, Eq)]
 pub struct DetectiveMove {
-    pub ticket: Ticket,
+    pub ticket: DetectiveTicket,
     pub destination: Station,
+}
+
+impl Display for DetectiveMove {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "with {} to {}", self.ticket, self.destination)
+    }
 }
 
 impl DetectiveMove {
@@ -57,10 +69,23 @@ impl DetectiveState {
         let current_station = self.current_station();
 
         if !CONNECTIONS.has(detective_move.connection_from_station(current_station)) {
-            self.moves.push(detective_move);
-
-            return Err(DetectiveMoveError::CannotMove(detective_move));
+            return Err(DetectiveMoveError::ConnectionDoesNotExist);
         }
+
+        // Handle tickets
+        match detective_move.ticket {
+            DetectiveTicket::Taxi => {
+                if let Some(new_count) = self.remaining_taxi_tickets.checked_sub(1) {
+                    self.remaining_taxi_tickets = new_count;
+                } else {
+                    return Err(DetectiveMoveError::NoTicketsLeftOf(detective_move.ticket));
+                }
+            }
+            DetectiveTicket::Bus => todo!(),
+            DetectiveTicket::Underground => todo!(),
+        }
+
+        self.moves.push(detective_move);
 
         Ok(())
     }

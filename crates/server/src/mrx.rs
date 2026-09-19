@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use scotland_yard_common::{
     MrXTicket, Station,
     connections::{CONNECTIONS, Connection},
@@ -8,17 +10,12 @@ use crate::detectives::DetectiveState;
 
 #[derive(Debug, thiserror::Error)]
 pub enum MrXMoveError {
-    #[error("cannot move Mr. X with {ticket} to {to}", ticket = .0.ticket, to = .0.destination)]
-    CannotMove(SingleMrXMove),
-    #[error(
-        "cannot double move Mr. X with {ticket} to {to} because Mr. X has no more double move tickets",
-        ticket = .0.ticket, to = .0.destination
-    )]
+    #[error("the connection {from} {mov} does not exist")]
+    ConnectionDoesNotExist { from: Station, mov: SingleMrXMove },
+    #[error("cannot double move {0} because Mr. X has no more double move tickets")]
     CannotDoubleMoveDueToMissingDoubleMoveTicket(SingleMrXMove),
     #[error(
-        "cannot move Mr. X with {ticket} to {destination} because detective #{detective_index} is already there",
-        ticket = single_move.ticket,
-        destination = single_move.destination
+        "cannot move Mr. X {single_move} because detective #{detective_index} is already there"
     )]
     CannotMoveToStationBecauseDetectiveIsThere {
         detective_index: usize,
@@ -30,6 +27,12 @@ pub enum MrXMoveError {
 pub struct SingleMrXMove {
     ticket: MrXTicket,
     destination: Station,
+}
+
+impl Display for SingleMrXMove {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "with {} to {}", self.ticket, self.destination)
+    }
 }
 
 impl SingleMrXMove {
@@ -88,7 +91,6 @@ impl MrXState {
     }
 
     fn validate_single_move(
-        &self,
         from: Station,
         mov: SingleMrXMove,
         detective_locations: &[DetectiveState],
@@ -97,7 +99,7 @@ impl MrXState {
 
         // Check that this is a valid connection.
         if !CONNECTIONS.has(mov.connection_from_station(from)) {
-            return Err(MrXMoveError::CannotMove(mov));
+            return Err(MrXMoveError::ConnectionDoesNotExist { from, mov });
         }
 
         // Check that there is no detective at the destination.
@@ -115,7 +117,7 @@ impl MrXState {
             });
         }
 
-        return Ok(());
+        Ok(())
     }
 
     pub fn move_by(
@@ -126,7 +128,7 @@ impl MrXState {
     ) -> Result<(), MrXMoveError> {
         let current_station = self.current_station();
 
-        self.validate_single_move(current_station, mov.first, detective_locations)?;
+        Self::validate_single_move(current_station, mov.first, detective_locations)?;
 
         if let Some(additional_move) = mov.second {
             // Double move! Validate, that Mr. X has at least one double move ticket.
@@ -137,7 +139,11 @@ impl MrXState {
                 ));
             }
 
-            self.validate_single_move(mov.first.destination, additional_move, detective_locations)?;
+            Self::validate_single_move(
+                mov.first.destination,
+                additional_move,
+                detective_locations,
+            )?;
 
             self.double_move_tickets_available -= 1;
         }
@@ -145,18 +151,5 @@ impl MrXState {
         self.moves.push(mov);
 
         Ok(())
-    }
-
-    pub fn is_caught(&self, detectives: &[crate::detectives::DetectiveState]) -> bool {
-        let current_field = self.current_station();
-        detectives
-            .iter()
-            .any(|detective| detective.current_station() == current_field)
-    }
-
-    pub fn has_no_moves(&self) -> bool {
-        // In a real implementation, this would check if MrX has any valid moves left
-        // For now, we'll just return false as an initial placeholder
-        false
     }
 }

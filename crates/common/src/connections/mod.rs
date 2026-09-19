@@ -2,9 +2,9 @@ mod data;
 #[cfg(test)]
 mod tests;
 
-use std::{iter::Copied, slice};
+use std::{fmt::Display, iter::Copied, slice};
 
-use crate::{Station, Ticket};
+use crate::{DetectiveTicket, Station};
 
 pub use data::CONNECTIONS;
 
@@ -35,14 +35,25 @@ pub enum ConnectionKind {
     Black,
 }
 
+impl Display for ConnectionKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Taxi => f.write_str("taxi"),
+            Self::Bus => f.write_str("bus"),
+            Self::Underground => f.write_str("underground"),
+            Self::Black => f.write_str("black"),
+        }
+    }
+}
+
 impl ConnectionKind {
     #[inline]
     #[must_use]
-    pub fn is_usable_with_ticket(self, ticket: Ticket) -> bool {
+    pub fn is_usable_with_ticket(self, ticket: DetectiveTicket) -> bool {
         match self {
-            Self::Taxi if ticket == Ticket::Taxi => true,
-            Self::Bus if ticket == Ticket::Bus => true,
-            Self::Underground if ticket == Ticket::Underground => true,
+            Self::Taxi if ticket == DetectiveTicket::Taxi => true,
+            Self::Bus if ticket == DetectiveTicket::Bus => true,
+            Self::Underground if ticket == DetectiveTicket::Underground => true,
             _ => false,
         }
     }

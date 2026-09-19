@@ -17,3 +17,5 @@ pub const DETECTIVE_COUNT_RANGE: Range<u8> = Range {
     start: MIN_DETECTIVES,
     end: MAX_DETECTIVES + 1,
 };
+
+pub const ROUNDS: u8 = 22;

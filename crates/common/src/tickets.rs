@@ -1,4 +1,4 @@
-use std::fmt::{Display, Write};
+use std::fmt::Display;
 
 use crate::connections::ConnectionKind;
 
@@ -21,12 +21,12 @@ impl Display for MrXTicket {
     }
 }
 
-impl From<Ticket> for MrXTicket {
-    fn from(value: Ticket) -> Self {
+impl From<DetectiveTicket> for MrXTicket {
+    fn from(value: DetectiveTicket) -> Self {
         match value {
-            Ticket::Taxi => Self::Taxi,
-            Ticket::Bus => Self::Bus,
-            Ticket::Underground => Self::Underground,
+            DetectiveTicket::Taxi => Self::Taxi,
+            DetectiveTicket::Bus => Self::Bus,
+            DetectiveTicket::Underground => Self::Underground,
         }
     }
 }
@@ -54,18 +54,18 @@ impl From<ConnectionKind> for MrXTicket {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum Ticket {
+pub enum DetectiveTicket {
     Taxi,
     Bus,
     Underground,
 }
 
-impl Display for Ticket {
+impl Display for DetectiveTicket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Ticket::Taxi => f.write_str("a taxi ticket"),
-            Ticket::Bus => f.write_str("a bug ticket"),
-            Ticket::Underground => f.write_str("an underground ticket"),
+            DetectiveTicket::Taxi => f.write_str("a taxi ticket"),
+            DetectiveTicket::Bus => f.write_str("a bug ticket"),
+            DetectiveTicket::Underground => f.write_str("an underground ticket"),
         }
     }
 }
