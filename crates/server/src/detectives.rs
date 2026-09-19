@@ -1,5 +1,6 @@
 use scotland_yard_common::{Field, Ticket, is_connection};
 
+#[derive(Debug, PartialEq, Copy, Clone, Eq)]
 pub struct DetectiveMove {
     ticket: Ticket,
     destination: Field,
@@ -29,5 +30,11 @@ impl Detective {
         self.moves.last().map_or(self.start, |m| m.destination)
     }
 
-    pub fn try_use_ticket(&mut self, ticket: Ticket) {}
+    pub fn try_use_ticket_to(&mut self, with: Ticket, to: Field) -> bool {
+        let mov = DetectiveMove::new(self.current_field(), with, to);
+        mov.inspect(|mov| {
+            self.moves.push(*mov);
+        });
+        mov.is_some()
+    }
 }
