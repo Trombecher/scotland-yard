@@ -77,7 +77,10 @@ impl<const N: usize> ConnectionGraph<N> {
         self.connections.iter().copied()
     }
 
-    pub fn destinations(&self, from: Station) -> impl Iterator<Item = (ConnectionKind, Station)> {
+    pub fn connections_from(
+        &self,
+        from: Station,
+    ) -> impl Iterator<Item = (ConnectionKind, Station)> {
         let start = self
             .connections
             .partition_point(|Connection { from: station, .. }| *station < from);
@@ -87,6 +90,32 @@ impl<const N: usize> ConnectionGraph<N> {
             .copied()
             .take_while(move |Connection { from: station, .. }| *station == from)
             .map(|Connection { kind, to, .. }| (kind, to))
+    }
+
+    pub fn destinations(
+        &self,
+        from: Station,
+        with: ConnectionKind,
+    ) -> impl Iterator<Item = Station> {
+        let start = self.connections.partition_point(
+            |Connection {
+                 from: from_station,
+                 kind,
+                 ..
+             }| (*from_station, *kind) < (from, with),
+        );
+
+        self.connections[start..]
+            .iter()
+            .copied()
+            .take_while(
+                move |Connection {
+                          from: from_station,
+                          kind,
+                          ..
+                      }| (*from_station, *kind) == (from, with),
+            )
+            .map(|Connection { to, .. }| to)
     }
 }
 

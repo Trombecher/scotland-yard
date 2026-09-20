@@ -10,6 +10,10 @@ pub enum MrXTicket {
     Black,
 }
 
+impl MrXTicket {
+    pub const ALL: [Self; 4] = [Self::Taxi, Self::Bus, Self::Underground, Self::Black];
+}
+
 impl Display for MrXTicket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

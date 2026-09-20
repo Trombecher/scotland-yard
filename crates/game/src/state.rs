@@ -1,10 +1,11 @@
 use scotland_yard_common::{
     Station,
+    connections::{CONNECTIONS, ConnectionKind},
     content::{MAX_DETECTIVES, MIN_DETECTIVES, ROUNDS},
 };
 
 use crate::{
-    MrXMoveError,
+    MrXMoveError, SingleMrXMove,
     detectives::{DetectiveMove, DetectiveMoveError, DetectiveState},
     mr_x::{MrXMove, MrXState},
 };
@@ -21,36 +22,16 @@ pub enum GameState {
     },
 }
 
-impl GameState {
-    #[must_use]
-    pub fn is_it_the_turn_of_mr_x(self) -> bool {
-        matches!(
-            self,
-            Self::PendingTurn {
-                turn: Turn::MrX,
-                ..
-            }
-        )
-    }
-
-    #[must_use]
-    pub fn is_it_the_turn_of_detective(self, detective_index: u8) -> bool {
-        match self {
-            Self::PendingTurn {
-                turn: Turn::Detective(d),
-                ..
-            } => detective_index == d,
-            _ => false,
-        }
-    }
-}
-
 #[derive(Debug, thiserror::Error)]
 #[error("{0} is not a valid index for a detective")]
 pub struct InvalidDetectiveIndexError(pub u8);
 
 #[derive(Debug, thiserror::Error)]
 pub enum GameStateTransitionError {
+    #[error("Mr. X has already won")]
+    MrXHasAlreadyWon,
+    #[error("detectives have already won")]
+    DetectivesHaveAlreadyWon,
     #[error("it is not the turn of Mr. X")]
     ItIsNotTheTurnOfMrX,
     #[error("{0}")]
@@ -228,15 +209,83 @@ impl Game {
             })
     }
 
+    fn is_mr_x_able_to_move(&self) -> bool {
+        let mr_x_station = self.mr_x_state.current_station();
+
+        if self
+            .mr_x_state
+            .remaining_tickets()
+            .available_tickets()
+            .map(ConnectionKind::from)
+            .any(|connection_kind| {
+                CONNECTIONS
+                    .destinations(mr_x_station, connection_kind)
+                    .any(|destination| self.detectives_at(destination).next().is_none())
+            })
+        {
+            // Mr. X has a ticket and a station
+            // such that the current Mr. X station connects
+            // and there does not exist a detective at that
+            // destination station.
+            //
+            // Therefore, Mr. X can move there.
+
+            return true;
+        }
+
+        false
+    }
+
+    fn validate_mr_x_single_move(
+        &self,
+        from: Station,
+        mr_x_single_move: SingleMrXMove,
+    ) -> Result<(), MrXMoveError> {
+        // Check that this is a valid connection.
+        if !CONNECTIONS.has(mr_x_single_move.connection_from_station(from)) {
+            return Err(MrXMoveError::ConnectionDoesNotExist {
+                from,
+                mov: mr_x_single_move,
+            });
+        }
+
+        // Check that there is no detective at the destination.
+        if let Some(detective_index) =
+            self.detective_states
+                .iter()
+                .enumerate()
+                .find_map(|(detective_index, state)| {
+                    (state.current_station() == mr_x_single_move.destination)
+                        .then_some(detective_index)
+                })
+        {
+            return Err(MrXMoveError::CannotMoveToStationBecauseDetectiveIsThere {
+                detective_index,
+                single_move: mr_x_single_move,
+            });
+        }
+
+        Ok(())
+    }
+
     /// Transition into a new game state via a move.
     ///
     /// # Errors
     ///
     /// If the move is invalid.
     pub fn transition(&mut self, mov: GameMove) -> Result<(), GameStateTransitionError> {
+        let (turn, round) = match self.state {
+            GameState::MrXHasWon => return Err(GameStateTransitionError::MrXHasAlreadyWon),
+            GameState::DetectivesHaveWon { .. } => {
+                return Err(GameStateTransitionError::DetectivesHaveAlreadyWon);
+            }
+            GameState::PendingTurn { turn, round } => (turn, round),
+        };
+
+        // Do state modification.
         match mov {
             GameMove::MrX(mr_x_move) => {
-                if !self.state().is_it_the_turn_of_mr_x() {
+                if !matches!(turn, Turn::MrX) {
                     return Err(GameStateTransitionError::ItIsNotTheTurnOfMrX);
                 }
 
@@ -246,9 +295,7 @@ impl Game {
                 index: detective_index,
                 mov: detective_move,
             } => {
-                // We try to move the detective.
-
-                if !self.state().is_it_the_turn_of_detective(detective_index) {
+                if !matches!(turn, Turn::Detective(n) if n == detective_index) {
                     return Err(GameStateTransitionError::IsIsNotTheTurnOfDetective(
                         detective_index,
                     ));
@@ -267,44 +314,34 @@ impl Game {
                     });
                 }
 
-                self.detective_mut(detective_index)
-                    .map_err(GameStateTransitionError::from)?
-                    .move_to(detective_move)
+                let detective = self.detective_mut(detective_index)?;
+                let detective_current_station = detective.current_station();
+
+                if !CONNECTIONS
+                    .has(detective_move.connection_from_station(detective_current_station))
+                {
+                    return Err(GameStateTransitionError::DetectiveMoveError {
+                        detective_index,
+                        detective_move,
+                        error: DetectiveMoveError::ConnectionDoesNotExist,
+                    });
+                }
+
+                // Update detective state.
+                detective
+                    .remaining_tickets
+                    .use_ticket(detective_move.ticket)
                     .map_err(|error| GameStateTransitionError::DetectiveMoveError {
                         detective_index,
                         error,
                         detective_move,
                     })?;
 
-                self.transition_game_state();
+                detective.moves.push(detective_move);
             }
         }
 
-        self.transition_game_state();
-
-        Ok(())
-    }
-
-    /// Transitions the game into a new state.
-    ///
-    /// * If it was Mr. X's turn, then it is now detective 0's term;
-    /// * if it was the last detective's turn then it is Mr. X's turn now;
-    /// * otherwise, it is now the next detective's turn.
-    fn transition_game_state(&mut self) {
-        let (turn, round) = match self.state {
-            GameState::MrXHasWon => {
-                unreachable!("advanced turn but Mr. X has already won")
-            }
-            GameState::DetectivesHaveWon {
-                detective_index_which_captured_mr_x,
-            } => {
-                unreachable!(
-                    "advanced turn but detective {detective_index_which_captured_mr_x} have already won"
-                )
-            }
-            GameState::PendingTurn { turn, round } => (turn, round),
-        };
-
+        // Update game state.
         let mr_x_station = self.mr_x_state.current_station();
         let detective_at_mr_x_station = self.detectives_at(mr_x_station).next();
 
@@ -313,7 +350,7 @@ impl Game {
                 detective_index_which_captured_mr_x: detective,
             };
 
-            return;
+            return Ok(());
         }
 
         self.state = match turn {
@@ -344,5 +381,7 @@ impl Game {
                 round,
             },
         };
+
+        Ok(())
     }
 }

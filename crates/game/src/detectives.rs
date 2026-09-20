@@ -1,10 +1,6 @@
 use std::fmt::Display;
 
-use scotland_yard_common::{
-    DetectiveTicket, MrXTicket, Station,
-    connections::{CONNECTIONS, Connection},
-    content,
-};
+use scotland_yard_common::{DetectiveTicket, MrXTicket, Station, connections::Connection, content};
 
 #[derive(Debug, thiserror::Error)]
 pub enum DetectiveMoveError {
@@ -42,9 +38,7 @@ impl DetectiveMove {
 
 pub struct DetectiveState {
     pub start: Station,
-    pub remaining_taxi_tickets: u8,
-    pub remaining_bus_tickets: u8,
-    pub remaining_underground_tickets: u8,
+    pub remaining_tickets: RemainingDetectiveTickets,
     pub moves: Vec<DetectiveMove>,
 }
 
@@ -53,9 +47,7 @@ impl DetectiveState {
     pub const fn new(start: Station) -> Self {
         Self {
             start,
-            remaining_taxi_tickets: content::DETECTIVE_INITIAL_TAXI_TICKET_COUNT,
-            remaining_bus_tickets: content::DETECTIVE_INITIAL_BUS_TICKET_COUNT,
-            remaining_underground_tickets: content::DETECTIVE_INITIAL_UNDERGROUND_TICKET_COUNT,
+            remaining_tickets: RemainingDetectiveTickets::new(),
             moves: Vec::new(),
         }
     }
@@ -64,54 +56,52 @@ impl DetectiveState {
     pub fn current_station(&self) -> Station {
         self.moves.last().map_or(self.start, |m| m.destination)
     }
+}
 
-    fn use_ticket(&mut self, ticket: DetectiveTicket) -> Result<(), DetectiveMoveError> {
-        match ticket {
-            DetectiveTicket::Taxi => {
-                if let Some(new_count) = self.remaining_taxi_tickets.checked_sub(1) {
-                    self.remaining_taxi_tickets = new_count;
-                } else {
-                    return Err(DetectiveMoveError::NoTicketsLeftOf(ticket));
-                }
-            }
-            DetectiveTicket::Bus => {
-                if let Some(new_count) = self.remaining_bus_tickets.checked_sub(1) {
-                    self.remaining_bus_tickets = new_count;
-                } else {
-                    return Err(DetectiveMoveError::NoTicketsLeftOf(ticket));
-                }
-            }
-            DetectiveTicket::Underground => {
-                if let Some(new_count) = self.remaining_underground_tickets.checked_sub(1) {
-                    self.remaining_underground_tickets = new_count;
-                } else {
-                    return Err(DetectiveMoveError::NoTicketsLeftOf(ticket));
-                }
-            }
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct RemainingDetectiveTickets {
+    taxi: u8,
+    bus: u8,
+    underground: u8,
+}
+
+impl Default for RemainingDetectiveTickets {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl RemainingDetectiveTickets {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            taxi: content::DETECTIVE_INITIAL_TAXI_TICKET_COUNT,
+            bus: content::DETECTIVE_INITIAL_BUS_TICKET_COUNT,
+            underground: content::DETECTIVE_INITIAL_UNDERGROUND_TICKET_COUNT,
         }
-
-        Ok(())
     }
 
-    /// Tries to apply the given move.
-    ///
     /// # Errors
     ///
-    /// If invariants are dissatisfied.
-    pub(crate) fn move_to(
-        &mut self,
-        detective_move: DetectiveMove,
-    ) -> Result<(), DetectiveMoveError> {
-        let current_station = self.current_station();
-
-        if !CONNECTIONS.has(detective_move.connection_from_station(current_station)) {
-            return Err(DetectiveMoveError::ConnectionDoesNotExist);
+    /// TODO
+    pub fn use_ticket(self, ticket: DetectiveTicket) -> Result<Self, DetectiveMoveError> {
+        macro_rules! use_that_ticket {
+            ($field:ident) => {{
+                if let Some(new_count) = self.$field.checked_sub(1) {
+                    Ok(Self {
+                        $field: new_count,
+                        ..self
+                    })
+                } else {
+                    Err(DetectiveMoveError::NoTicketsLeftOf(ticket))
+                }
+            }};
         }
 
-        self.use_ticket(detective_move.ticket)?;
-
-        self.moves.push(detective_move);
-
-        Ok(())
+        match ticket {
+            DetectiveTicket::Taxi => use_that_ticket!(taxi),
+            DetectiveTicket::Bus => use_that_ticket!(bus),
+            DetectiveTicket::Underground => use_that_ticket!(underground),
+        }
     }
 }

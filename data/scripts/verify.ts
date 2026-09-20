@@ -1,9 +1,6 @@
 import {writeFile} from "node:fs/promises";
-import {
-    addReversedConnections,
-    compareConnections,
-    parseConnectionsFromAlexElvers,
-} from "./lib";
+import {addReversedConnections, compareConnections} from "../lib";
+import {parseConnectionsFromAlexElvers} from "../lib/parse";
 import unparsedAlexConnections from "./sources/alex connections.txt" with {
     type: "plain",
 };

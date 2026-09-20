@@ -57,7 +57,7 @@ impl MrXMove {
 pub struct MrXState {
     start: Station,
     moves: Vec<MrXMove>,
-    remaining_tickets: MrXRemainingTickets,
+    remaining_tickets: RemainingMrXTickets,
 }
 
 impl MrXState {
@@ -70,8 +70,12 @@ impl MrXState {
         Some(Self {
             start,
             moves: Vec::new(),
-            remaining_tickets: MrXRemainingTickets::new(detective_count),
+            remaining_tickets: RemainingMrXTickets::new(detective_count),
         })
+    }
+
+    pub fn remaining_tickets(&self) -> RemainingMrXTickets {
+        self.remaining_tickets
     }
 
     #[must_use]
@@ -80,34 +84,6 @@ impl MrXState {
             .last()
             .copied()
             .map_or(self.start, MrXMove::destination)
-    }
-
-    fn validate_single_move(
-        from: Station,
-        mov: SingleMrXMove,
-        detective_locations: &[DetectiveState],
-    ) -> Result<(), MrXMoveError> {
-        // Check that this is a valid connection.
-        if !CONNECTIONS.has(mov.connection_from_station(from)) {
-            return Err(MrXMoveError::ConnectionDoesNotExist { from, mov });
-        }
-
-        // Check that there is no detective at the destination.
-        if let Some(detective_index) =
-            detective_locations
-                .iter()
-                .enumerate()
-                .find_map(|(detective_index, state)| {
-                    (state.current_station() == mov.destination).then_some(detective_index)
-                })
-        {
-            return Err(MrXMoveError::CannotMoveToStationBecauseDetectiveIsThere {
-                detective_index,
-                single_move: mov,
-            });
-        }
-
-        Ok(())
     }
 
     /// Tries to move Mr. X.

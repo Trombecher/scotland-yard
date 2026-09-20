@@ -3,7 +3,7 @@ use scotland_yard_common::{DetectiveTicket, MrXTicket, content};
 use crate::mr_x::errors::{MrXMoveError, MrXNoTicketError};
 
 #[derive(Copy, Clone, Debug)]
-pub struct MrXRemainingTickets {
+pub struct RemainingMrXTickets {
     double_move: u8,
     bus: u8,
     taxi: u8,
@@ -11,7 +11,7 @@ pub struct MrXRemainingTickets {
     black: u8,
 }
 
-impl MrXRemainingTickets {
+impl RemainingMrXTickets {
     #[must_use]
     pub const fn new(detective_count: u8) -> Self {
         Self {
@@ -115,5 +115,23 @@ impl MrXRemainingTickets {
         } else {
             Ok(remaining)
         }
+    }
+
+    #[must_use]
+    pub fn has_at_least_one_ticket_remaining_of(self, ticket: MrXTicket) -> bool {
+        match ticket {
+            MrXTicket::Taxi => self.taxi > 0,
+            MrXTicket::Bus => self.bus > 0,
+            MrXTicket::Underground => self.underground > 0,
+            MrXTicket::Black => self.black > 0,
+        }
+    }
+
+    /// Emits all ticket (kinds) which there is at
+    /// least one remaining of.
+    pub fn available_tickets(self) -> impl Iterator<Item = MrXTicket> {
+        MrXTicket::ALL
+            .into_iter()
+            .filter(move |ticket| self.has_at_least_one_ticket_remaining_of(*ticket))
     }
 }

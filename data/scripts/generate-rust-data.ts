@@ -1,10 +1,8 @@
 import {access, constants, writeFile} from "node:fs/promises";
-import _connections from "./current/connections.json" with {type: "json"};
-import {type Connection, formatForRust} from "./lib";
+import {formatForRust} from "../lib/format";
+import {currentConnections} from "../lib/parse";
 
-_connections satisfies {from: number; type: string; to: number}[];
-
-const connections = _connections as readonly Connection[];
+const connections = await currentConnections();
 
 // this script must be executed in the ./data dir
 await access("./package.json", constants.F_OK);
