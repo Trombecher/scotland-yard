@@ -2,9 +2,9 @@
 #![warn(clippy::pedantic)]
 
 mod detectives;
+mod game;
 mod mr_x;
-mod state;
 
 pub use detectives::*;
+pub use game::*;
 pub use mr_x::*;
-pub use state::*;

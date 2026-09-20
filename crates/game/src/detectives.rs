@@ -84,7 +84,7 @@ impl RemainingDetectiveTickets {
     /// # Errors
     ///
     /// TODO
-    pub fn use_ticket(self, ticket: DetectiveTicket) -> Result<Self, DetectiveMoveError> {
+    pub const fn use_ticket(self, ticket: DetectiveTicket) -> Result<Self, DetectiveMoveError> {
         macro_rules! use_that_ticket {
             ($field:ident) => {{
                 if let Some(new_count) = self.$field.checked_sub(1) {
@@ -103,5 +103,37 @@ impl RemainingDetectiveTickets {
             DetectiveTicket::Bus => use_that_ticket!(bus),
             DetectiveTicket::Underground => use_that_ticket!(underground),
         }
+    }
+
+    #[must_use]
+    pub fn taxi(self) -> u8 {
+        self.taxi
+    }
+
+    #[must_use]
+    pub fn bus(self) -> u8 {
+        self.bus
+    }
+
+    #[must_use]
+    pub fn underground(self) -> u8 {
+        self.underground
+    }
+
+    #[must_use]
+    pub fn has_at_least_one_ticket_remaining_of(self, ticket: DetectiveTicket) -> bool {
+        match ticket {
+            DetectiveTicket::Taxi => self.taxi > 0,
+            DetectiveTicket::Bus => self.bus > 0,
+            DetectiveTicket::Underground => self.underground > 0,
+        }
+    }
+
+    /// Emits all ticket (kinds) which there is at
+    /// least one remaining of.
+    pub fn available_tickets(self) -> impl Iterator<Item = DetectiveTicket> {
+        DetectiveTicket::ALL
+            .into_iter()
+            .filter(move |ticket| self.has_at_least_one_ticket_remaining_of(*ticket))
     }
 }

@@ -1,7 +1,7 @@
 use scotland_yard_common::{
-    Station,
+    MrXTicket, Station,
     connections::{CONNECTIONS, ConnectionKind},
-    content::{MAX_DETECTIVES, MIN_DETECTIVES, ROUNDS},
+    content::{self, MAX_DETECTIVES, MIN_DETECTIVES, ROUNDS},
 };
 
 use crate::{
@@ -93,7 +93,8 @@ pub enum GameMove {
 }
 
 pub struct Game {
-    state: GameState,
+    round: u8,
+    next_turn: Turn,
     mr_x_state: MrXState,
     detective_states: Vec<DetectiveState>,
 }
@@ -122,11 +123,8 @@ impl Game {
         }
 
         Ok(Game {
-            state: GameState::PendingTurn {
-                turn: Turn::MrX,
-                round: 0,
-            },
-
+            next_turn: Turn::MrX,
+            round: 0,
             detective_states: detective_starting_stations
                 .iter()
                 .copied()
@@ -154,7 +152,10 @@ impl Game {
 
     #[must_use]
     pub fn state(&self) -> GameState {
-        self.state
+        if self.round >= content::ROUNDS {
+            GameState::MrXHasWon
+        } else {
+        }
     }
 
     fn validate_detective_index(
@@ -207,6 +208,36 @@ impl Game {
                 #[allow(clippy::cast_possible_truncation)]
                 return detective_index as u8;
             })
+    }
+
+    #[must_use]
+    fn is_a_detective_able_to_move(&self) -> bool {
+        (0..self.detective_states.len() as u8)
+            .any(|detective_index| self.is_detective_able_to_move(detective_index).unwrap())
+    }
+
+    fn is_detective_able_to_move(
+        &self,
+        detective_index: u8,
+    ) -> Result<bool, InvalidDetectiveIndexError> {
+        let detective = self.detective(detective_index)?;
+        let detective_station = detective.current_station();
+
+        if detective
+            .remaining_tickets
+            .available_tickets()
+            .map(MrXTicket::from)
+            .map(ConnectionKind::from)
+            .any(|connection_kind| {
+                CONNECTIONS
+                    .destinations(detective_station, connection_kind)
+                    .any(|destination| self.detectives_at(destination).next().is_none())
+            })
+        {
+            return Ok(true);
+        }
+
+        Ok(false)
     }
 
     fn is_mr_x_able_to_move(&self) -> bool {

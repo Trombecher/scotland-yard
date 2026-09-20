@@ -64,6 +64,10 @@ pub enum DetectiveTicket {
     Underground,
 }
 
+impl DetectiveTicket {
+    pub const ALL: [Self; 3] = [Self::Taxi, Self::Bus, Self::Underground];
+}
+
 impl Display for DetectiveTicket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
