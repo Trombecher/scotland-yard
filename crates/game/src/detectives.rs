@@ -65,30 +65,50 @@ impl DetectiveState {
         self.moves.last().map_or(self.start, |m| m.destination)
     }
 
+    fn use_ticket(&mut self, ticket: DetectiveTicket) -> Result<(), DetectiveMoveError> {
+        match ticket {
+            DetectiveTicket::Taxi => {
+                if let Some(new_count) = self.remaining_taxi_tickets.checked_sub(1) {
+                    self.remaining_taxi_tickets = new_count;
+                } else {
+                    return Err(DetectiveMoveError::NoTicketsLeftOf(ticket));
+                }
+            }
+            DetectiveTicket::Bus => {
+                if let Some(new_count) = self.remaining_bus_tickets.checked_sub(1) {
+                    self.remaining_bus_tickets = new_count;
+                } else {
+                    return Err(DetectiveMoveError::NoTicketsLeftOf(ticket));
+                }
+            }
+            DetectiveTicket::Underground => {
+                if let Some(new_count) = self.remaining_underground_tickets.checked_sub(1) {
+                    self.remaining_underground_tickets = new_count;
+                } else {
+                    return Err(DetectiveMoveError::NoTicketsLeftOf(ticket));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Tries to apply the given move.
     ///
     /// # Errors
     ///
     /// If invariants are dissatisfied.
-    pub fn move_to(&mut self, detective_move: DetectiveMove) -> Result<(), DetectiveMoveError> {
+    pub(crate) fn move_to(
+        &mut self,
+        detective_move: DetectiveMove,
+    ) -> Result<(), DetectiveMoveError> {
         let current_station = self.current_station();
 
         if !CONNECTIONS.has(detective_move.connection_from_station(current_station)) {
             return Err(DetectiveMoveError::ConnectionDoesNotExist);
         }
 
-        // Handle tickets
-        match detective_move.ticket {
-            DetectiveTicket::Taxi => {
-                if let Some(new_count) = self.remaining_taxi_tickets.checked_sub(1) {
-                    self.remaining_taxi_tickets = new_count;
-                } else {
-                    return Err(DetectiveMoveError::NoTicketsLeftOf(detective_move.ticket));
-                }
-            }
-            DetectiveTicket::Bus => todo!(),
-            DetectiveTicket::Underground => todo!(),
-        }
+        self.use_ticket(detective_move.ticket)?;
 
         self.moves.push(detective_move);
 

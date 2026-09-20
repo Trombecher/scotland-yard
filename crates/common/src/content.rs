@@ -19,3 +19,18 @@ pub const DETECTIVE_COUNT_RANGE: Range<u8> = Range {
 };
 
 pub const ROUNDS: u8 = 22;
+
+#[must_use]
+pub const fn mr_x_initial_taxi_ticket_count(detective_count: u8) -> u8 {
+    TAXI_TICKET_COUNT - detective_count * DETECTIVE_INITIAL_UNDERGROUND_TICKET_COUNT
+}
+
+#[must_use]
+pub const fn mr_x_initial_bus_ticket_count(detective_count: u8) -> u8 {
+    BUS_TICKET_COUNT - detective_count * DETECTIVE_INITIAL_BUS_TICKET_COUNT
+}
+
+#[must_use]
+pub const fn mr_x_initial_underground_ticket_count(detective_count: u8) -> u8 {
+    UNDERGROUND_TICKET_COUNT - detective_count * DETECTIVE_INITIAL_UNDERGROUND_TICKET_COUNT
+}

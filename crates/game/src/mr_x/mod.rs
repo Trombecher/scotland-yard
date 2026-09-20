@@ -1,3 +1,9 @@
+mod errors;
+mod tickets;
+
+pub use errors::*;
+pub use tickets::*;
+
 use std::fmt::Display;
 
 use scotland_yard_common::{
@@ -7,21 +13,6 @@ use scotland_yard_common::{
 };
 
 use crate::detectives::DetectiveState;
-
-#[derive(Debug, thiserror::Error)]
-pub enum MrXMoveError {
-    #[error("the connection {from} {mov} does not exist")]
-    ConnectionDoesNotExist { from: Station, mov: SingleMrXMove },
-    #[error("cannot double move {0} because Mr. X has no more double move tickets")]
-    CannotDoubleMoveDueToMissingDoubleMoveTicket(SingleMrXMove),
-    #[error(
-        "cannot move Mr. X {single_move} because detective #{detective_index} is already there"
-    )]
-    CannotMoveToStationBecauseDetectiveIsThere {
-        detective_index: usize,
-        single_move: SingleMrXMove,
-    },
-}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct SingleMrXMove {
@@ -66,7 +57,7 @@ impl MrXMove {
 pub struct MrXState {
     start: Station,
     moves: Vec<MrXMove>,
-    double_move_tickets_available: u8,
+    remaining_tickets: MrXRemainingTickets,
 }
 
 impl MrXState {
@@ -79,7 +70,7 @@ impl MrXState {
         Some(Self {
             start,
             moves: Vec::new(),
-            double_move_tickets_available: 2,
+            remaining_tickets: MrXRemainingTickets::new(detective_count),
         })
     }
 
@@ -96,8 +87,6 @@ impl MrXState {
         mov: SingleMrXMove,
         detective_locations: &[DetectiveState],
     ) -> Result<(), MrXMoveError> {
-        // TODO: check ticket availability.
-
         // Check that this is a valid connection.
         if !CONNECTIONS.has(mov.connection_from_station(from)) {
             return Err(MrXMoveError::ConnectionDoesNotExist { from, mov });
@@ -126,34 +115,32 @@ impl MrXState {
     /// # Errors
     ///
     /// If invariants are dissatisfied.
-    pub fn move_by(
+    pub(crate) fn move_by(
         &mut self,
         mov: MrXMove,
         // TODO: maybe don't pass in the whole state...
         detective_locations: &[DetectiveState],
     ) -> Result<(), MrXMoveError> {
+        let new_remaining_tickets = self
+            .remaining_tickets
+            .use_tickets(mov.first.ticket, mov.second.map(|mov| mov.ticket))?;
+
         let current_station = self.current_station();
 
         Self::validate_single_move(current_station, mov.first, detective_locations)?;
 
         if let Some(additional_move) = mov.second {
-            // Double move! Validate, that Mr. X has at least one double move ticket.
-
-            if self.double_move_tickets_available == 0 {
-                return Err(MrXMoveError::CannotDoubleMoveDueToMissingDoubleMoveTicket(
-                    additional_move,
-                ));
-            }
+            // Double move!
 
             Self::validate_single_move(
                 mov.first.destination,
                 additional_move,
                 detective_locations,
             )?;
-
-            self.double_move_tickets_available -= 1;
         }
 
+        // Update state.
+        self.remaining_tickets = new_remaining_tickets;
         self.moves.push(mov);
 
         Ok(())

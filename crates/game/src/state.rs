@@ -4,8 +4,9 @@ use scotland_yard_common::{
 };
 
 use crate::{
+    MrXMoveError,
     detectives::{DetectiveMove, DetectiveMoveError, DetectiveState},
-    mrx::{MrXMove, MrXMoveError, MrXState},
+    mr_x::{MrXMove, MrXState},
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -104,6 +105,12 @@ pub enum GameStateCreationError {
     TooManyDetectives(usize),
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum GameMove {
+    MrX(MrXMove),
+    Detective { index: u8, mov: DetectiveMove },
+}
+
 pub struct Game {
     state: GameState,
     mr_x_state: MrXState,
@@ -162,6 +169,120 @@ impl Game {
     #[must_use]
     pub fn detectives(&self) -> &[DetectiveState] {
         &self.detective_states
+    }
+
+    #[must_use]
+    pub fn state(&self) -> GameState {
+        self.state
+    }
+
+    fn validate_detective_index(
+        &self,
+        detective_index: u8,
+    ) -> Result<(), InvalidDetectiveIndexError> {
+        if detective_index as usize >= self.detective_states.len() {
+            return Err(InvalidDetectiveIndexError(detective_index));
+        }
+
+        Ok(())
+    }
+
+    /// # Errors
+    ///
+    /// If the detective with the given index does not exist.
+    #[allow(clippy::missing_panics_doc)]
+    pub fn detective(
+        &self,
+        detective_index: u8,
+    ) -> Result<&DetectiveState, InvalidDetectiveIndexError> {
+        self.validate_detective_index(detective_index)?;
+
+        // this unwrap won't panic.
+        Ok(self.detective_states.get(detective_index as usize).unwrap())
+    }
+
+    /// This is not exposed due to potential state manipulation.
+    fn detective_mut(
+        &mut self,
+        detective_index: u8,
+    ) -> Result<&mut DetectiveState, InvalidDetectiveIndexError> {
+        self.validate_detective_index(detective_index)?;
+
+        // this unwrap won't panic.
+        Ok(self
+            .detective_states
+            .get_mut(detective_index as usize)
+            .unwrap())
+    }
+
+    fn detectives_at(&self, station: Station) -> impl Iterator<Item = u8> {
+        self.detective_states
+            .iter()
+            .enumerate()
+            .filter_map(move |(index, detective)| {
+                (detective.current_station() == station).then_some(index)
+            })
+            .map(|detective_index| {
+                #[allow(clippy::cast_possible_truncation)]
+                return detective_index as u8;
+            })
+    }
+
+    /// Transition into a new game state via a move.
+    ///
+    /// # Errors
+    ///
+    /// If the move is invalid.
+    pub fn transition(&mut self, mov: GameMove) -> Result<(), GameStateTransitionError> {
+        match mov {
+            GameMove::MrX(mr_x_move) => {
+                if !self.state().is_it_the_turn_of_mr_x() {
+                    return Err(GameStateTransitionError::ItIsNotTheTurnOfMrX);
+                }
+
+                self.mr_x_state.move_by(mr_x_move, &self.detective_states)?;
+            }
+            GameMove::Detective {
+                index: detective_index,
+                mov: detective_move,
+            } => {
+                // We try to move the detective.
+
+                if !self.state().is_it_the_turn_of_detective(detective_index) {
+                    return Err(GameStateTransitionError::IsIsNotTheTurnOfDetective(
+                        detective_index,
+                    ));
+                }
+
+                // Check if there is already another detective at the destination
+                if let Some(detective_at_destination) =
+                    self.detectives_at(detective_move.destination).next()
+                {
+                    return Err(GameStateTransitionError::DetectiveMoveError {
+                        detective_index,
+                        detective_move,
+                        error: DetectiveMoveError::ThereIsAlreadyADetectiveAtTheDestination {
+                            detective_at_destination,
+                        },
+                    });
+                }
+
+                self.detective_mut(detective_index)
+                    .map_err(GameStateTransitionError::from)?
+                    .move_to(detective_move)
+                    .map_err(|error| GameStateTransitionError::DetectiveMoveError {
+                        detective_index,
+                        error,
+                        detective_move,
+                    })?;
+
+                self.transition_game_state();
+            }
+        }
+
+        self.transition_game_state();
+
+        Ok(())
     }
 
     /// Transitions the game into a new state.
@@ -223,117 +344,5 @@ impl Game {
                 round,
             },
         };
-    }
-
-    #[must_use]
-    pub fn state(&self) -> GameState {
-        self.state
-    }
-
-    /// # Errors
-    ///
-    /// TODO
-    pub fn move_mr_x(&mut self, mov: MrXMove) -> Result<(), GameStateTransitionError> {
-        if !self.state().is_it_the_turn_of_mr_x() {
-            return Err(GameStateTransitionError::ItIsNotTheTurnOfMrX);
-        }
-
-        self.mr_x_state.move_by(mov, &self.detective_states)?;
-        self.transition_game_state();
-
-        Ok(())
-    }
-
-    fn validate_detective_index(
-        &self,
-        detective_index: u8,
-    ) -> Result<(), InvalidDetectiveIndexError> {
-        if detective_index as usize >= self.detective_states.len() {
-            return Err(InvalidDetectiveIndexError(detective_index));
-        }
-
-        Ok(())
-    }
-
-    /// # Errors
-    ///
-    /// If the detective with the given index does not exist.
-    #[allow(clippy::missing_panics_doc)]
-    pub fn detective(
-        &self,
-        detective_index: u8,
-    ) -> Result<&DetectiveState, InvalidDetectiveIndexError> {
-        self.validate_detective_index(detective_index)?;
-
-        // this unwrap won't panic.
-        Ok(self.detective_states.get(detective_index as usize).unwrap())
-    }
-
-    /// This is not exposed due to potential state manipulation.
-    fn detective_mut(
-        &mut self,
-        detective_index: u8,
-    ) -> Result<&mut DetectiveState, InvalidDetectiveIndexError> {
-        self.validate_detective_index(detective_index)?;
-
-        // this unwrap won't panic.
-        Ok(self
-            .detective_states
-            .get_mut(detective_index as usize)
-            .unwrap())
-    }
-
-    fn detectives_at(&self, station: Station) -> impl Iterator<Item = u8> {
-        self.detective_states
-            .iter()
-            .enumerate()
-            .filter_map(move |(index, detective)| {
-                (detective.current_station() == station).then_some(index)
-            })
-            .map(|detective_index| {
-                #[allow(clippy::cast_possible_truncation)]
-                return detective_index as u8;
-            })
-    }
-
-    /// # Errors
-    ///
-    /// TODO
-    pub fn move_detective(
-        &mut self,
-        detective_index: u8,
-        detective_move: DetectiveMove,
-    ) -> Result<(), GameStateTransitionError> {
-        if !self.state().is_it_the_turn_of_detective(detective_index) {
-            return Err(GameStateTransitionError::IsIsNotTheTurnOfDetective(
-                detective_index,
-            ));
-        }
-
-        // Check if there is already another detective at the destination
-        if let Some(detective_at_destination) =
-            self.detectives_at(detective_move.destination).next()
-        {
-            return Err(GameStateTransitionError::DetectiveMoveError {
-                detective_index,
-                detective_move,
-                error: DetectiveMoveError::ThereIsAlreadyADetectiveAtTheDestination {
-                    detective_at_destination,
-                },
-            });
-        }
-
-        self.detective_mut(detective_index)
-            .map_err(GameStateTransitionError::from)?
-            .move_to(detective_move)
-            .map_err(|error| GameStateTransitionError::DetectiveMoveError {
-                detective_index,
-                error,
-                detective_move,
-            })?;
-
-        self.transition_game_state();
-
-        Ok(())
     }
 }
