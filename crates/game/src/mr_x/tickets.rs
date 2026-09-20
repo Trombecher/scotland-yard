@@ -67,7 +67,10 @@ impl RemainingMrXTickets {
         self.underground
     }
 
-    const fn use_ticket(self, ticket: MrXTicket) -> Result<Self, MrXNoTicketError> {
+    /// # Errors
+    ///
+    /// TODO
+    pub const fn use_ticket(self, ticket: MrXTicket) -> Result<Self, MrXNoTicketError> {
         macro_rules! decrement_remaining {
             ($field:ident) => {{
                 if let Some(decremented) = self.$field.checked_sub(1) {
@@ -89,7 +92,10 @@ impl RemainingMrXTickets {
         }
     }
 
-    const fn use_double_move_ticket(self) -> Result<Self, MrXMoveError> {
+    /// # Errors
+    ///
+    /// TODO
+    pub const fn use_double_move_ticket(self) -> Result<Self, MrXMoveError> {
         if let Some(new_remaining_double_move_tickets) = self.double_move.checked_sub(1) {
             Ok(Self {
                 double_move: new_remaining_double_move_tickets,
@@ -97,23 +103,6 @@ impl RemainingMrXTickets {
             })
         } else {
             Err(MrXMoveError::NoDoubleMoveTicketLeft)
-        }
-    }
-
-    /// # Errors
-    ///
-    /// TODO
-    pub fn use_tickets(
-        self,
-        first: MrXTicket,
-        second: Option<MrXTicket>,
-    ) -> Result<Self, MrXMoveError> {
-        let remaining = self.use_ticket(first)?;
-
-        if let Some(second) = second {
-            remaining.use_ticket(second)?.use_double_move_ticket()
-        } else {
-            Ok(remaining)
         }
     }
 
